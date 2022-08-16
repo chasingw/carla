@@ -39,6 +39,8 @@ class AOpticalFlowCamera;
 class ARadar;
 class ARayCastSemanticLidar;
 class ARayCastLidar;
+class ARayCastCustomLidar;
+class ARayCastCustomSemanticLidar;
 class ASceneCaptureCamera;
 class ASemanticSegmentationCamera;
 class AInstanceSegmentationCamera;
@@ -67,6 +69,8 @@ namespace sensor {
     std::pair<ARadar *, s11n::RadarSerializer>,
     std::pair<ARayCastSemanticLidar *, s11n::SemanticLidarSerializer>,
     std::pair<ARayCastLidar *, s11n::LidarSerializer>,
+    std::pair<ARayCastCustomLidar *, s11n::LidarSerializer>,
+    std::pair<ARayCastCustomSemanticLidar *, s11n::SemanticLidarSerializer>,
     std::pair<ARssSensor *, s11n::NoopSerializer>,
     std::pair<ASceneCaptureCamera *, s11n::ImageSerializer>,
     std::pair<ASemanticSegmentationCamera *, s11n::ImageSerializer>,
@@ -93,6 +97,8 @@ namespace sensor {
 #include "Carla/Sensor/Radar.h"
 #include "Carla/Sensor/RayCastLidar.h"
 #include "Carla/Sensor/RayCastSemanticLidar.h"
+#include "Carla/Sensor/RayCastCustomLidar.h"
+#include "Carla/Sensor/RayCastCustomSemanticLidar.h"
 #include "Carla/Sensor/RssSensor.h"
 #include "Carla/Sensor/SceneCaptureCamera.h"
 #include "Carla/Sensor/SemanticSegmentationCamera.h"

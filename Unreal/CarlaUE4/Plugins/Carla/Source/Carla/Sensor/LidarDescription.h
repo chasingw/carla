@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include<string.h>
 #include "LidarDescription.generated.h"
 
 USTRUCT()
@@ -69,4 +70,11 @@ struct CARLA_API FLidarDescription
 
   UPROPERTY(EditAnywhere)
   float NoiseStdDev = 0.0f;
+
+  // lidar type. 0-ML30S,1-MLXS
+  UPROPERTY(EditAnywhere)
+  int LidarType = 0;
+
+  UPROPERTY(EditAnywhere)
+  FString LidarCalPath = "";
 };

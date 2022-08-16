@@ -8,7 +8,8 @@
 #include <cmath>
 #include "Carla.h"
 #include "Carla/Actor/ActorBlueprintFunctionLibrary.h"
-#include "Carla/Sensor/RayCastSemanticLidar.h"
+#include "Carla/Sensor/RayCastCustomSemanticLidar.h"
+#include <carla/rpc/String.h>
 
 #include <compiler/disable-ue4-macros.h>
 #include "carla/geom/Math.h"
@@ -18,21 +19,22 @@
 #include "Engine/CollisionProfile.h"
 #include "Runtime/Engine/Classes/Kismet/KismetMathLibrary.h"
 #include "Runtime/Core/Public/Async/ParallelFor.h"
+#include <fstream>
 
 namespace crp = carla::rpc;
 
-FActorDefinition ARayCastSemanticLidar::GetSensorDefinition()
+FActorDefinition ARayCastCustomSemanticLidar::GetSensorDefinition()
 {
   return UActorBlueprintFunctionLibrary::MakeLidarDefinition(TEXT("ray_cast_semantic_zvision"));
 }
 
-ARayCastSemanticLidar::ARayCastSemanticLidar(const FObjectInitializer& ObjectInitializer)
+ARayCastCustomSemanticLidar::ARayCastCustomSemanticLidar(const FObjectInitializer& ObjectInitializer)
   : Super(ObjectInitializer)
 {
   PrimaryActorTick.bCanEverTick = true;
 }
 
-void ARayCastSemanticLidar::Set(const FActorDescription &ActorDescription)
+void ARayCastCustomSemanticLidar::Set(const FActorDescription &ActorDescription)
 {
   Super::Set(ActorDescription);
   FLidarDescription LidarDescription;
@@ -40,7 +42,7 @@ void ARayCastSemanticLidar::Set(const FActorDescription &ActorDescription)
   Set(LidarDescription);
 }
 
-void ARayCastSemanticLidar::Set(const FLidarDescription &LidarDescription)
+void ARayCastCustomSemanticLidar::Set(const FLidarDescription &LidarDescription)
 {
   Description = LidarDescription;
   SemanticLidarData = FSemanticLidarData(Description.Channels);
@@ -48,25 +50,78 @@ void ARayCastSemanticLidar::Set(const FLidarDescription &LidarDescription)
   PointsPerChannel.resize(Description.Channels);
 }
 
-void ARayCastSemanticLidar::CreateLasers()
+void ARayCastCustomSemanticLidar::CreateLasers()
 {
-  const auto NumberOfLasers = Description.Channels;
+  const auto NumberOfLasers = int(Description.PointsPerSecond / Description.RotationFrequency);
   check(NumberOfLasers > 0u);
-  const float DeltaAngle = NumberOfLasers == 1u ? 0.f :
-    (Description.UpperFovLimit - Description.LowerFovLimit) /
-    static_cast<float>(NumberOfLasers - 1);
-  LaserAngles.Empty(NumberOfLasers);
-  for(auto i = 0u; i < NumberOfLasers; ++i)
-  {
-    const float VerticalAngle =
-        Description.UpperFovLimit - static_cast<float>(i) * DeltaAngle;
-    LaserAngles.Emplace(VerticalAngle);
+  // const float DeltaAngle = NumberOfLasers == 1u ? 0.f :
+  //   (Description.UpperFovLimit - Description.LowerFovLimit) /
+  //   static_cast<float>(NumberOfLasers - 1);
+  // LaserAngles.Empty(NumberOfLasers);
+  // for(auto i = 0u; i < NumberOfLasers; ++i)
+  // {
+  //   const float VerticalAngle =
+  //       Description.UpperFovLimit - static_cast<float>(i) * DeltaAngle;
+  //   LaserAngles.Emplace(VerticalAngle);
+  // }
+
+  LaserHorizontalAngles.Empty(NumberOfLasers);
+  LaserVerticalAngles.Empty(NumberOfLasers);
+  double tmp;
+  std::string path = carla::rpc::FromFString(Description.LidarCalPath);
+  std::ifstream in(path.c_str());
+
+  if(Description.LidarType == 0){
+    for(int i = 0; i < 6400; i++)
+    {
+        for(int j = 0; j <= 8; j++)
+        {   
+            in >> tmp;
+            if(j == 1 || j == 3 || j == 5 || j == 7)
+            {
+                LaserHorizontalAngles.Emplace(tmp);
+            }
+            else if(j == 2 || j == 4 || j == 6 || j == 8)
+            {
+                LaserVerticalAngles.Emplace(tmp);
+            }
+        }
+    }
+  }else if(Description.LidarType == 1){
+    // # 注释
+    /**
+    # file version:MLXS0001.cal_v0.0
+    VERSION 0.1
+    Mode MLXs_180
+    1 -64.967 17.154 -20.368 13.765 9.715 12.600
+    ...
+    36000 -62.260 -9.410 -19.969 -11.854 9.756 -12.901
+     */
+    in >> tmp;
+    in >> tmp;
+    in >> tmp;
+    for(int i = 0; i < 36000; i++)
+    {
+        for(int j = 0; j <= 6; j++)
+        {   
+            in >> tmp;
+            if(j == 1 || j == 3 || j == 5)
+            {
+                LaserHorizontalAngles.Emplace(tmp);
+            }
+            else if(j == 2 || j == 4 || j == 6)
+            {
+                LaserVerticalAngles.Emplace(tmp);
+            }
+        }
+    }
   }
+  
 }
 
-void ARayCastSemanticLidar::PostPhysTick(UWorld *World, ELevelTick TickType, float DeltaTime)
+void ARayCastCustomSemanticLidar::PostPhysTick(UWorld *World, ELevelTick TickType, float DeltaTime)
 {
-  TRACE_CPUPROFILER_EVENT_SCOPE(ARayCastSemanticLidar::PostPhysTick);
+  TRACE_CPUPROFILER_EVENT_SCOPE(ARayCastCustomSemanticLidar::PostPhysTick);
   SimulateLidar(DeltaTime);
 
   {
@@ -76,10 +131,10 @@ void ARayCastSemanticLidar::PostPhysTick(UWorld *World, ELevelTick TickType, flo
   }
 }
 
-void ARayCastSemanticLidar::SimulateLidar(const float DeltaTime)
+void ARayCastCustomSemanticLidar::SimulateLidar(const float DeltaTime)
 {
-  TRACE_CPUPROFILER_EVENT_SCOPE(ARayCastSemanticLidar::SimulateLidar);
-  const uint32 ChannelCount = Description.Channels;
+  TRACE_CPUPROFILER_EVENT_SCOPE(ARayCastCustomSemanticLidar::SimulateLidar);
+  const uint32 ChannelCount = Description.Channels;//Description.Channels;
   const uint32 PointsToScanWithOneLaser =
     FMath::RoundHalfFromZero(
         Description.PointsPerSecond * DeltaTime / float(ChannelCount));
@@ -94,7 +149,7 @@ void ARayCastSemanticLidar::SimulateLidar(const float DeltaTime)
     return;
   }
 
-  check(ChannelCount == LaserAngles.Num());
+  // check(ChannelCount == LaserAngles.Num());
 
   const float CurrentHorizontalAngle = carla::geom::Math::ToDegrees(
       SemanticLidarData.GetHorizontalAngle());
@@ -117,11 +172,13 @@ void ARayCastSemanticLidar::SimulateLidar(const float DeltaTime)
 
       for (auto idxPtsOneLaser = 0u; idxPtsOneLaser < PointsToScanWithOneLaser; idxPtsOneLaser++) {
         FHitResult HitResult;
-        const float VertAngle = LaserAngles[idxChannel];
-        const float HorizAngle = std::fmod(CurrentHorizontalAngle + AngleDistanceOfLaserMeasure
-            * idxPtsOneLaser, Description.HorizontalFov) - Description.HorizontalFov / 2;
-        const bool PreprocessResult = RayPreprocessCondition[idxChannel][idxPtsOneLaser];
+        // const float VertAngle = LaserAngles[idxChannel];
+        // const float HorizAngle = std::fmod(CurrentHorizontalAngle + AngleDistanceOfLaserMeasure
+        //     * idxPtsOneLaser, Description.HorizontalFov) - Description.HorizontalFov / 2;
 
+        const float VertAngle = LaserVerticalAngles[idxChannel*PointsToScanWithOneLaser + idxPtsOneLaser] - 90;
+        const float HorizAngle = LaserHorizontalAngles[idxChannel*PointsToScanWithOneLaser + idxPtsOneLaser];
+        const bool PreprocessResult = RayPreprocessCondition[idxChannel][idxPtsOneLaser];
         if (PreprocessResult && ShootLaser(VertAngle, HorizAngle, HitResult, TraceParams)) {
           WritePointAsync(idxChannel, HitResult);
         }
@@ -138,7 +195,7 @@ void ARayCastSemanticLidar::SimulateLidar(const float DeltaTime)
   SemanticLidarData.SetHorizontalAngle(HorizontalAngle);
 }
 
-void ARayCastSemanticLidar::ResetRecordedHits(uint32_t Channels, uint32_t MaxPointsPerChannel) {
+void ARayCastCustomSemanticLidar::ResetRecordedHits(uint32_t Channels, uint32_t MaxPointsPerChannel) {
   RecordedHits.resize(Channels);
 
   for (auto& hits : RecordedHits) {
@@ -147,7 +204,7 @@ void ARayCastSemanticLidar::ResetRecordedHits(uint32_t Channels, uint32_t MaxPoi
   }
 }
 
-void ARayCastSemanticLidar::PreprocessRays(uint32_t Channels, uint32_t MaxPointsPerChannel) {
+void ARayCastCustomSemanticLidar::PreprocessRays(uint32_t Channels, uint32_t MaxPointsPerChannel) {
   RayPreprocessCondition.resize(Channels);
 
   for (auto& conds : RayPreprocessCondition) {
@@ -157,13 +214,13 @@ void ARayCastSemanticLidar::PreprocessRays(uint32_t Channels, uint32_t MaxPoints
   }
 }
 
-void ARayCastSemanticLidar::WritePointAsync(uint32_t channel, FHitResult &detection) {
+void ARayCastCustomSemanticLidar::WritePointAsync(uint32_t channel, FHitResult &detection) {
 	TRACE_CPUPROFILER_EVENT_SCOPE_STR(__FUNCTION__);
   DEBUG_ASSERT(GetChannelCount() > channel);
   RecordedHits[channel].emplace_back(detection);
 }
 
-void ARayCastSemanticLidar::ComputeAndSaveDetections(const FTransform& SensorTransform) {
+void ARayCastCustomSemanticLidar::ComputeAndSaveDetections(const FTransform& SensorTransform) {
 	TRACE_CPUPROFILER_EVENT_SCOPE_STR(__FUNCTION__);
   for (auto idxChannel = 0u; idxChannel < Description.Channels; ++idxChannel)
     PointsPerChannel[idxChannel] = RecordedHits[idxChannel].size();
@@ -180,7 +237,7 @@ void ARayCastSemanticLidar::ComputeAndSaveDetections(const FTransform& SensorTra
   SemanticLidarData.WriteChannelCount(PointsPerChannel);
 }
 
-void ARayCastSemanticLidar::ComputeRawDetection(const FHitResult& HitInfo, const FTransform& SensorTransf, FSemanticDetection& Detection) const
+void ARayCastCustomSemanticLidar::ComputeRawDetection(const FHitResult& HitInfo, const FTransform& SensorTransf, FSemanticDetection& Detection) const
 {
     const FVector HitPoint = HitInfo.ImpactPoint;
     Detection.point = SensorTransf.Inverse().TransformPosition(HitPoint);
@@ -207,7 +264,7 @@ void ARayCastSemanticLidar::ComputeRawDetection(const FHitResult& HitInfo, const
 }
 
 
-bool ARayCastSemanticLidar::ShootLaser(const float VerticalAngle, const float HorizontalAngle, FHitResult& HitResult, FCollisionQueryParams& TraceParams) const
+bool ARayCastCustomSemanticLidar::ShootLaser(const float VerticalAngle, const float HorizontalAngle, FHitResult& HitResult, FCollisionQueryParams& TraceParams) const
 {
   TRACE_CPUPROFILER_EVENT_SCOPE_STR(__FUNCTION__);
 

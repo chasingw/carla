@@ -819,73 +819,145 @@ void UActorBlueprintFunctionLibrary::MakeLidarDefinition(
   FillIdAndTags(Definition, TEXT("sensor"), TEXT("lidar"), Id);
   AddRecommendedValuesForSensorRoleNames(Definition);
   AddVariationsForSensor(Definition);
+
   // Number of channels.
   FActorVariation Channels;
-  Channels.Id = TEXT("channels");
-  Channels.Type = EActorAttributeType::Int;
-  Channels.RecommendedValues = { TEXT("32") };
   // Range.
   FActorVariation Range;
-  Range.Id = TEXT("range");
-  Range.Type = EActorAttributeType::Float;
-  Range.RecommendedValues = { TEXT("10.0") }; // 10 meters
   // Points per second.
   FActorVariation PointsPerSecond;
-  PointsPerSecond.Id = TEXT("points_per_second");
-  PointsPerSecond.Type = EActorAttributeType::Int;
-  PointsPerSecond.RecommendedValues = { TEXT("56000") };
   // Frequency.
   FActorVariation Frequency;
-  Frequency.Id = TEXT("rotation_frequency");
-  Frequency.Type = EActorAttributeType::Float;
-  Frequency.RecommendedValues = { TEXT("10.0") };
   // Upper FOV limit.
   FActorVariation UpperFOV;
-  UpperFOV.Id = TEXT("upper_fov");
-  UpperFOV.Type = EActorAttributeType::Float;
-  UpperFOV.RecommendedValues = { TEXT("10.0") };
   // Lower FOV limit.
   FActorVariation LowerFOV;
-  LowerFOV.Id = TEXT("lower_fov");
-  LowerFOV.Type = EActorAttributeType::Float;
-  LowerFOV.RecommendedValues = { TEXT("-30.0") };
   // Horizontal FOV.
   FActorVariation HorizontalFOV;
-  HorizontalFOV.Id = TEXT("horizontal_fov");
-  HorizontalFOV.Type = EActorAttributeType::Float;
-  HorizontalFOV.RecommendedValues = { TEXT("360.0") };
   // Atmospheric Attenuation Rate.
   FActorVariation AtmospAttenRate;
-  AtmospAttenRate.Id = TEXT("atmosphere_attenuation_rate");
-  AtmospAttenRate.Type = EActorAttributeType::Float;
-  AtmospAttenRate.RecommendedValues = { TEXT("0.004") };
   // Noise seed
   FActorVariation NoiseSeed;
-  NoiseSeed.Id = TEXT("noise_seed");
-  NoiseSeed.Type = EActorAttributeType::Int;
-  NoiseSeed.RecommendedValues = { TEXT("0") };
-  NoiseSeed.bRestrictToRecommended = false;
   // Dropoff General Rate
   FActorVariation DropOffGenRate;
-  DropOffGenRate.Id = TEXT("dropoff_general_rate");
-  DropOffGenRate.Type = EActorAttributeType::Float;
-  DropOffGenRate.RecommendedValues = { TEXT("0.45") };
   // Dropoff intensity limit.
   FActorVariation DropOffIntensityLimit;
-  DropOffIntensityLimit.Id = TEXT("dropoff_intensity_limit");
-  DropOffIntensityLimit.Type = EActorAttributeType::Float;
-  DropOffIntensityLimit.RecommendedValues = { TEXT("0.8") };
   // Dropoff at zero intensity.
   FActorVariation DropOffAtZeroIntensity;
-  DropOffAtZeroIntensity.Id = TEXT("dropoff_zero_intensity");
-  DropOffAtZeroIntensity.Type = EActorAttributeType::Float;
-  DropOffAtZeroIntensity.RecommendedValues = { TEXT("0.4") };
   // Noise in lidar cloud points.
   FActorVariation StdDevLidar;
-  StdDevLidar.Id = TEXT("noise_stddev");
-  StdDevLidar.Type = EActorAttributeType::Float;
-  StdDevLidar.RecommendedValues = { TEXT("0.0") };
 
+  // lidar type. 0-ML30S,1-MLXS
+  FActorVariation TypeLidar;
+
+  // LidarCalPath
+  FActorVariation CalPathLidar;
+  
+  if (Id == "ray_cast" or Id == "ray_cast_semantic") {
+    Channels.Id = TEXT("channels");
+    Channels.Type = EActorAttributeType::Int;
+    Channels.RecommendedValues = { TEXT("32") };
+    
+    Range.Id = TEXT("range");
+    Range.Type = EActorAttributeType::Float;
+    Range.RecommendedValues = { TEXT("10.0") }; // 10 meters
+    
+    PointsPerSecond.Id = TEXT("points_per_second");
+    PointsPerSecond.Type = EActorAttributeType::Int;
+    PointsPerSecond.RecommendedValues = { TEXT("56000") };
+    
+    Frequency.Id = TEXT("rotation_frequency");
+    Frequency.Type = EActorAttributeType::Float;
+    Frequency.RecommendedValues = { TEXT("10.0") };
+    
+    UpperFOV.Id = TEXT("upper_fov");
+    UpperFOV.Type = EActorAttributeType::Float;
+    UpperFOV.RecommendedValues = { TEXT("10.0") };
+    
+    LowerFOV.Id = TEXT("lower_fov");
+    LowerFOV.Type = EActorAttributeType::Float;
+    LowerFOV.RecommendedValues = { TEXT("-30.0") };
+    
+    HorizontalFOV.Id = TEXT("horizontal_fov");
+    HorizontalFOV.Type = EActorAttributeType::Float;
+    HorizontalFOV.RecommendedValues = { TEXT("360.0") };
+    
+    AtmospAttenRate.Id = TEXT("atmosphere_attenuation_rate");
+    AtmospAttenRate.Type = EActorAttributeType::Float;
+    AtmospAttenRate.RecommendedValues = { TEXT("0.004") };
+    
+    NoiseSeed.Id = TEXT("noise_seed");
+    NoiseSeed.Type = EActorAttributeType::Int;
+    NoiseSeed.RecommendedValues = { TEXT("0") };
+    NoiseSeed.bRestrictToRecommended = false;
+    
+    DropOffGenRate.Id = TEXT("dropoff_general_rate");
+    DropOffGenRate.Type = EActorAttributeType::Float;
+    DropOffGenRate.RecommendedValues = { TEXT("0.45") };
+    
+    DropOffIntensityLimit.Id = TEXT("dropoff_intensity_limit");
+    DropOffIntensityLimit.Type = EActorAttributeType::Float;
+    DropOffIntensityLimit.RecommendedValues = { TEXT("0.8") };
+    
+    DropOffAtZeroIntensity.Id = TEXT("dropoff_zero_intensity");
+    DropOffAtZeroIntensity.Type = EActorAttributeType::Float;
+    DropOffAtZeroIntensity.RecommendedValues = { TEXT("0.4") };
+    
+    StdDevLidar.Id = TEXT("noise_stddev");
+    StdDevLidar.Type = EActorAttributeType::Float;
+    StdDevLidar.RecommendedValues = { TEXT("0.0") };
+  }else{
+    // Number of channels.
+    Channels.Id = TEXT("channels");
+    Channels.Type = EActorAttributeType::Int;
+    Channels.RecommendedValues = { TEXT("160") };
+    // Range.
+    Range.Id = TEXT("range");
+    Range.Type = EActorAttributeType::Float;
+    Range.RecommendedValues = { TEXT("30.0") }; // 10 meters
+    // Points per second.
+    PointsPerSecond.Id = TEXT("points_per_second");
+    PointsPerSecond.Type = EActorAttributeType::Int;
+    PointsPerSecond.RecommendedValues = { TEXT("512000") };
+    // Frequency.
+    Frequency.Id = TEXT("rotation_frequency");
+    Frequency.Type = EActorAttributeType::Float;
+    Frequency.RecommendedValues = { TEXT("10.0") };
+    // Atmospheric Attenuation Rate.
+    AtmospAttenRate.Id = TEXT("atmosphere_attenuation_rate");
+    AtmospAttenRate.Type = EActorAttributeType::Float;
+    AtmospAttenRate.RecommendedValues = { TEXT("0.004") };
+    // Noise seed
+    NoiseSeed.Id = TEXT("noise_seed");
+    NoiseSeed.Type = EActorAttributeType::Int;
+    NoiseSeed.RecommendedValues = { TEXT("0") };
+    NoiseSeed.bRestrictToRecommended = false;
+    // Dropoff General Rate
+    DropOffGenRate.Id = TEXT("dropoff_general_rate");
+    DropOffGenRate.Type = EActorAttributeType::Float;
+    DropOffGenRate.RecommendedValues = { TEXT("0.45") };
+    // Dropoff intensity limit.
+    DropOffIntensityLimit.Id = TEXT("dropoff_intensity_limit");
+    DropOffIntensityLimit.Type = EActorAttributeType::Float;
+    DropOffIntensityLimit.RecommendedValues = { TEXT("0.8") };
+    // Dropoff at zero intensity.
+    DropOffAtZeroIntensity.Id = TEXT("dropoff_zero_intensity");
+    DropOffAtZeroIntensity.Type = EActorAttributeType::Float;
+    DropOffAtZeroIntensity.RecommendedValues = { TEXT("0.4") };
+    // Noise in lidar cloud points.
+    StdDevLidar.Id = TEXT("noise_stddev");
+    StdDevLidar.Type = EActorAttributeType::Float;
+    StdDevLidar.RecommendedValues = { TEXT("0.2") };
+
+    TypeLidar.Id = TEXT("lidar_type");
+    TypeLidar.Type = EActorAttributeType::Int;
+    TypeLidar.RecommendedValues = { TEXT("0") };
+
+    CalPathLidar.Id = TEXT("lidar_calpath");
+    CalPathLidar.Type = EActorAttributeType::String;
+    CalPathLidar.RecommendedValues = { TEXT("") };
+  }
+  
   if (Id == "ray_cast") {
     Definition.Variations.Append({
       Channels,
@@ -901,8 +973,7 @@ void UActorBlueprintFunctionLibrary::MakeLidarDefinition(
       DropOffAtZeroIntensity,
       StdDevLidar,
       HorizontalFOV});
-  }
-  else if (Id == "ray_cast_semantic") {
+  }else if (Id == "ray_cast_semantic") {
     Definition.Variations.Append({
       Channels,
       Range,
@@ -911,6 +982,28 @@ void UActorBlueprintFunctionLibrary::MakeLidarDefinition(
       UpperFOV,
       LowerFOV,
       HorizontalFOV});
+  } else if (Id == "ray_cast_zvision"){
+    Definition.Variations.Append({
+      Channels,
+      Range,
+      PointsPerSecond,
+      Frequency,
+      AtmospAttenRate,
+      NoiseSeed,
+      DropOffGenRate,
+      DropOffIntensityLimit,
+      DropOffAtZeroIntensity,
+      StdDevLidar,
+      TypeLidar,
+      CalPathLidar});
+  } else if(Id == "ray_cast_semantic_zvision"){
+    Definition.Variations.Append({
+      Channels,
+      Range,
+      PointsPerSecond,
+      Frequency,
+      TypeLidar,
+      CalPathLidar});
   }
   else {
     DEBUG_ASSERT(false);
@@ -1548,6 +1641,10 @@ void UActorBlueprintFunctionLibrary::SetLidar(
       RetrieveActorAttributeToFloat("dropoff_zero_intensity", Description.Variations, Lidar.DropOffAtZeroIntensity);
   Lidar.NoiseStdDev =
       RetrieveActorAttributeToFloat("noise_stddev", Description.Variations, Lidar.NoiseStdDev);
+  Lidar.LidarType =
+      RetrieveActorAttributeToInt("lidar_type", Description.Variations, Lidar.LidarType);
+  Lidar.LidarCalPath =
+      RetrieveActorAttributeToString("lidar_calpath", Description.Variations, Lidar.LidarCalPath);
 }
 
 void UActorBlueprintFunctionLibrary::SetGnss(

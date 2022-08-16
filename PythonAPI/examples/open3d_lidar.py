@@ -120,7 +120,7 @@ def generate_lidar_bp(arg, world, blueprint_library, delta):
     if arg.semantic:
         lidar_bp = world.get_blueprint_library().find('sensor.lidar.ray_cast_semantic')
     else:
-        lidar_bp = blueprint_library.find('sensor.lidar.ray_cast')
+        lidar_bp = blueprint_library.find('sensor.lidar.ray_cast_zvision')
         if arg.no_noise:
             lidar_bp.set_attribute('dropoff_general_rate', '0.0')
             lidar_bp.set_attribute('dropoff_intensity_limit', '1.0')
@@ -128,12 +128,27 @@ def generate_lidar_bp(arg, world, blueprint_library, delta):
         else:
             lidar_bp.set_attribute('noise_stddev', '0.2')
 
-    lidar_bp.set_attribute('upper_fov', str(arg.upper_fov))
-    lidar_bp.set_attribute('lower_fov', str(arg.lower_fov))
-    lidar_bp.set_attribute('channels', str(arg.channels))
-    lidar_bp.set_attribute('range', str(arg.range))
-    lidar_bp.set_attribute('rotation_frequency', str(1.0 / delta))
-    lidar_bp.set_attribute('points_per_second', str(arg.points_per_second))
+    # lidar_bp.set_attribute('upper_fov', str(arg.upper_fov))
+    # lidar_bp.set_attribute('lower_fov', str(arg.lower_fov))
+
+    if arg.lidartype == 0:
+
+        print('set lidar type ml30s')
+        lidar_bp.set_attribute('lidar_type', "ml30s")
+        lidar_bp.set_attribute('channels', str(160))
+        lidar_bp.set_attribute('range', str(40))
+        lidar_bp.set_attribute('rotation_frequency', str(10))
+        lidar_bp.set_attribute('points_per_second', str(512000))
+        lidar_bp.set_attribute('lidar_calpath', arg.calpath)
+
+    elif arg.lidartype == 1:
+        print('set lidar type mlxs')
+        lidar_bp.set_attribute('lidar_type', "mlxs")
+        lidar_bp.set_attribute('channels', str(180))      # 180 * 600 = 108000
+        lidar_bp.set_attribute('range', str(100))
+        lidar_bp.set_attribute('rotation_frequency', str(10))
+        lidar_bp.set_attribute('points_per_second', str(1080000))
+        lidar_bp.set_attribute('lidar_calpath', arg.calpath)
     return lidar_bp
 
 
@@ -184,7 +199,7 @@ def main(arg):
         lidar_bp = generate_lidar_bp(arg, world, blueprint_library, delta)
 
         user_offset = carla.Location(arg.x, arg.y, arg.z)
-        lidar_transform = carla.Transform(carla.Location(x=-0.5, z=1.8) + user_offset)
+        lidar_transform = carla.Transform(carla.Location(x=2, z=2.8) + user_offset)
 
         lidar = world.spawn_actor(lidar_bp, lidar_transform, attach_to=vehicle)
 
@@ -218,7 +233,7 @@ def main(arg):
             vis.poll_events()
             vis.update_renderer()
             # # This can fix Open3D jittering issues:
-            time.sleep(0.005)
+            time.sleep(0.01)
             world.tick()
 
             process_time = datetime.now() - dt0
@@ -280,17 +295,17 @@ if __name__ == "__main__":
         help='actor filter (default: "vehicle.*")')
     argparser.add_argument(
         '--upper-fov',
-        default=15.0,
+        default=25.0,
         type=float,
         help='lidar\'s upper field of view in degrees (default: 15.0)')
     argparser.add_argument(
         '--lower-fov',
-        default=-25.0,
+        default=-55.0,
         type=float,
         help='lidar\'s lower field of view in degrees (default: -25.0)')
     argparser.add_argument(
         '--channels',
-        default=64.0,
+        default=160.0,
         type=float,
         help='lidar\'s channel count (default: 64)')
     argparser.add_argument(
@@ -300,24 +315,35 @@ if __name__ == "__main__":
         help='lidar\'s maximum range in meters (default: 100.0)')
     argparser.add_argument(
         '--points-per-second',
-        default=500000,
+        default=512000,
         type=int,
         help='lidar\'s points per second (default: 500000)')
     argparser.add_argument(
         '-x',
-        default=0.0,
+        default=2,
         type=float,
         help='offset in the sensor position in the X-axis in meters (default: 0.0)')
     argparser.add_argument(
         '-y',
-        default=0.0,
+        default=2,
         type=float,
         help='offset in the sensor position in the Y-axis in meters (default: 0.0)')
     argparser.add_argument(
         '-z',
-        default=0.0,
+        default=2,
         type=float,
         help='offset in the sensor position in the Z-axis in meters (default: 0.0)')
+    argparser.add_argument(
+        '--lidartype',
+        default=0,
+        type=int,
+        help='lidar type 0 for ml30s or 1 for mlxs (default: 0)')
+
+    argparser.add_argument(
+        '--calpath',
+        default="",
+        type=str,
+        help='lidar cal path')
     args = argparser.parse_args()
 
     try:
