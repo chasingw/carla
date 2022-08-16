@@ -176,7 +176,7 @@ void ARayCastCustomSemanticLidar::SimulateLidar(const float DeltaTime)
         // const float HorizAngle = std::fmod(CurrentHorizontalAngle + AngleDistanceOfLaserMeasure
         //     * idxPtsOneLaser, Description.HorizontalFov) - Description.HorizontalFov / 2;
 
-        const float VertAngle = LaserVerticalAngles[idxChannel*PointsToScanWithOneLaser + idxPtsOneLaser] - 90;
+        const float VertAngle = LaserVerticalAngles[idxChannel*PointsToScanWithOneLaser + idxPtsOneLaser];
         const float HorizAngle = LaserHorizontalAngles[idxChannel*PointsToScanWithOneLaser + idxPtsOneLaser];
         const bool PreprocessResult = RayPreprocessCondition[idxChannel][idxPtsOneLaser];
         if (PreprocessResult && ShootLaser(VertAngle, HorizAngle, HitResult, TraceParams)) {
