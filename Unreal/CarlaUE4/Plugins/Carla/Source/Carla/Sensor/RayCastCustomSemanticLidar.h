@@ -76,8 +76,9 @@ protected:
   std::vector<std::vector<bool>> RayPreprocessCondition;
   std::vector<uint32_t> PointsPerChannel;
 
-  TArray<float> LaserHorizontalAngles;
-  TArray<float> LaserVerticalAngles;
+  std::vector<std::vector<float> > LidarCsvReader(std::string filename);
+  std::vector<std::vector<float> > LidarCsvInfo;     
+  int LidarPointSize = 0;
 
 private:
   FSemanticLidarData SemanticLidarData;
