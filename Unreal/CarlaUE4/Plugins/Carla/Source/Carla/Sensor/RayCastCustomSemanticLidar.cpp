@@ -64,59 +64,33 @@ void ARayCastCustomSemanticLidar::CreateLasers()
   //       Description.UpperFovLimit - static_cast<float>(i) * DeltaAngle;
   //   LaserAngles.Emplace(VerticalAngle);
   // }
-
-  LaserHorizontalAngles.Empty(NumberOfLasers);
-  LaserVerticalAngles.Empty(NumberOfLasers);
-  double tmp;
   std::string path = carla::rpc::FromFString(Description.LidarCalPath);
-  std::ifstream in(path.c_str());
+  LidarCsvInfo = LidarCsvReader(path);
+  LidarPointSize = LidarCsvInfo.size(); 
+}
 
-  if(Description.LidarType == 0){
-    for(int i = 0; i < 6400; i++)
-    {
-        for(int j = 0; j <= 8; j++)
-        {   
-            in >> tmp;
-            if(j == 1 || j == 3 || j == 5 || j == 7)
-            {
-                LaserHorizontalAngles.Emplace(tmp);
-            }
-            else if(j == 2 || j == 4 || j == 6 || j == 8)
-            {
-                LaserVerticalAngles.Emplace(tmp);
-            }
-        }
-    }
-  }else if(Description.LidarType == 1){
-    // # 注释
-    /**
-    # file version:MLXS0001.cal_v0.0
-    VERSION 0.1
-    Mode MLXs_180
-    1 -64.967 17.154 -20.368 13.765 9.715 12.600
-    ...
-    36000 -62.260 -9.410 -19.969 -11.854 9.756 -12.901
-     */
-    in >> tmp;
-    in >> tmp;
-    in >> tmp;
-    for(int i = 0; i < 36000; i++)
-    {
-        for(int j = 0; j <= 6; j++)
-        {   
-            in >> tmp;
-            if(j == 1 || j == 3 || j == 5)
-            {
-                LaserHorizontalAngles.Emplace(tmp);
-            }
-            else if(j == 2 || j == 4 || j == 6)
-            {
-                LaserVerticalAngles.Emplace(tmp);
-            }
-        }
-    }
+std::vector< std::vector<float> > ARayCastCustomSemanticLidar::LidarCsvReader(std::string filename) 
+{
+  /*  CSV file content
+      Position 1 is Azimuth(Degree); 
+      Position 2 is Elevation(Degree); 
+      Position 3 is the scanning time stamp; .
+  */
+  std::ifstream LidarCsv(filename, std::ios::in);
+  std::string lineStr;
+  std::vector<std::vector<float> > LidarPointInfo;
+  while (getline(LidarCsv, lineStr)) 
+  {
+    std::stringstream ss(lineStr);
+    std::string str;
+    std::vector<float> lineArray;
+    
+    while (getline(ss, str, ','))
+      lineArray.push_back(std::stof(str));
+    LidarPointInfo.push_back(lineArray);
   }
-  
+ 
+  return LidarPointInfo; 
 }
 
 void ARayCastCustomSemanticLidar::PostPhysTick(UWorld *World, ELevelTick TickType, float DeltaTime)
@@ -137,7 +111,7 @@ void ARayCastCustomSemanticLidar::SimulateLidar(const float DeltaTime)
   const uint32 ChannelCount = Description.Channels;//Description.Channels;
   const uint32 PointsToScanWithOneLaser =
     FMath::RoundHalfFromZero(
-        Description.PointsPerSecond * DeltaTime / float(ChannelCount));
+        LidarPointSize / float(ChannelCount));
 
   if (PointsToScanWithOneLaser <= 0)
   {
@@ -175,9 +149,9 @@ void ARayCastCustomSemanticLidar::SimulateLidar(const float DeltaTime)
         // const float VertAngle = LaserAngles[idxChannel];
         // const float HorizAngle = std::fmod(CurrentHorizontalAngle + AngleDistanceOfLaserMeasure
         //     * idxPtsOneLaser, Description.HorizontalFov) - Description.HorizontalFov / 2;
-
-        const float VertAngle = LaserVerticalAngles[idxChannel*PointsToScanWithOneLaser + idxPtsOneLaser];
-        const float HorizAngle = LaserHorizontalAngles[idxChannel*PointsToScanWithOneLaser + idxPtsOneLaser];
+        
+        const float VertAngle = LidarCsvInfo[idxChannel*PointsToScanWithOneLaser + idxPtsOneLaser][0];
+        const float HorizAngle = LidarCsvInfo[idxChannel*PointsToScanWithOneLaser + idxPtsOneLaser][1];
         const bool PreprocessResult = RayPreprocessCondition[idxChannel][idxPtsOneLaser];
         if (PreprocessResult && ShootLaser(VertAngle, HorizAngle, HitResult, TraceParams)) {
           WritePointAsync(idxChannel, HitResult);
