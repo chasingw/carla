@@ -1188,7 +1188,9 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(20.0)
 
-        sim_world = client.get_world()
+        # sim_world = client.get_world()
+        print(client.get_available_maps())
+        sim_world = client.load_world('Town04')
         if args.sync:
             original_settings = sim_world.get_settings()
             settings = sim_world.get_settings()
